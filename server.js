@@ -7,6 +7,8 @@ const userRoutes = require("./routes/user_routes");
 const officeRoutes = require("./routes/office_routes");
 const Admin = require("./models/admin");
 const bcrypt = require("bcrypt");
+const path = require('path');
+
 
 require("dotenv").config();
 
@@ -25,6 +27,7 @@ if (!process.env.ADMIN_PASSWORD) {
 app.use(helmet());
 app.use(cors());
 app.use(express.json());
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Debug middleware to log incoming requests
 app.use((req, res, next) => {

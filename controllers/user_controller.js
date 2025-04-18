@@ -5,10 +5,23 @@ const User = require('../models/user');
 const Office = require('../models/office');
 const generateLoginId = require('../utils/generate_login_id');
 const multer = require('multer');
+const path = require('path');
 const { UniqueConstraintError, ForeignKeyConstraintError } = require('sequelize');
 
+// Configure Multer storage to preserve file extension
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, 'uploads/');
+  },
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
+    const ext = path.extname(file.originalname); // e.g., '.png'
+    cb(null, `${file.fieldname}-${uniqueSuffix}${ext}`);
+  },
+});
+
 const upload = multer({
-  dest: 'uploads/',
+  storage: storage,
   fileFilter: (req, file, cb) => {
     const allowedTypes = ['image/jpeg', 'image/png'];
     if (!allowedTypes.includes(file.mimetype)) {
@@ -168,6 +181,8 @@ exports.updateUser = [
   validate,
   async (req, res) => {
     try {
+      console.log("req.file ======>", req.file);
+      
       const user = await User.findByPk(req.params.id);
       if (!user) {
         return res.status(404).json({ error: 'User not found' });
@@ -193,6 +208,9 @@ exports.updateUser = [
       }
 
       const hashedPassword = password ? await bcrypt.hash(password, 10) : user.password;
+
+      console.log("udated user data ======>" );
+      
 
       await user.update({
         rank,
@@ -265,6 +283,8 @@ exports.updateOwnProfile = [
   profileUpdateValidation,
   validate,
   async (req, res) => {
+    console.log("req.file ======>", req.file);
+
     try {
       const user = await User.findByPk(req.user.id);
       if (!user) {
