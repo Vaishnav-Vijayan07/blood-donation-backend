@@ -60,7 +60,7 @@ const initializeAdmin = async () => {
 
 // Database synchronization and server start
 sequelize
-  .sync()
+  .sync({ force: true })
   .then(async () => {
     await initializeAdmin();
     const port = process.env.PORT || 7700;
