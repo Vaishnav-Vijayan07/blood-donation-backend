@@ -9,6 +9,11 @@ const User = sequelize.define('User', {
     allowNull: false,
     field: 'login_id'
   },
+  full_name: {
+    type: DataTypes.STRING,
+    allowNull: false,
+    field: 'full_name'
+  },
   rank: {
     type: DataTypes.STRING,
     allowNull: false,
