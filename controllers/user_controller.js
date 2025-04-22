@@ -1,8 +1,10 @@
 const bcrypt = require("bcrypt");
 const { body, query } = require("express-validator");
 const validate = require("../middlewares/validate_middleware");
-const User = require("../models/user");
-const Office = require("../models/office");
+const models = require("../models/associations");
+const User = models.User;
+const Office = models.Office;
+const Rank = models.Rank;
 const generateLoginId = require("../utils/generate_login_id");
 const multer = require("multer");
 const path = require("path");
@@ -33,9 +35,10 @@ const upload = multer({
 });
 
 const userValidation = [
-  body("rank").notEmpty().withMessage("Rank is required"),
+  body("rank_id").isInt().withMessage("Valid Rank ID is required"),
   body("full_name").notEmpty().withMessage("Full Name is required"),
   body("blood_group").notEmpty().withMessage("Blood Group is required"),
+  body("last_donated_date").optional().isDate().withMessage("Valid last donated date is required"),
   body("mobile_number").notEmpty().withMessage("Mobile Number is required"),
   body("email").isEmail().withMessage("Valid email is required"),
   body("password").isLength({ min: 6 }).withMessage("Password must be at least 6 characters"),
@@ -45,17 +48,30 @@ const userValidation = [
   body("office_id").isInt().withMessage("Valid Office ID is required"),
 ];
 
-const profileUpdateValidation = [
+const updateUserValidation = [
   body("full_name").optional().notEmpty().withMessage("Full Name cannot be empty"),
-  body("rank").optional().notEmpty().withMessage("Rank cannot be empty"),
+  body("rank_id").optional().isInt().withMessage("Valid Rank ID is required"),
   body("blood_group").optional().notEmpty().withMessage("Blood Group cannot be empty"),
+  body("last_donated_date").optional().isDate().withMessage("Valid last donated date is required"),
   body("mobile_number").optional().notEmpty().withMessage("Mobile Number cannot be empty"),
   body("email").optional().isEmail().withMessage("Valid email is required"),
   body("date_of_birth").optional().isDate().withMessage("Valid date of birth is required"),
   body("service_start_date").optional().isDate().withMessage("Valid service start date is required"),
   body("residential_address").optional().notEmpty().withMessage("Residential Address cannot be empty"),
   body("office_id").optional().isInt().withMessage("Valid Office ID is required"),
-  body("status").optional().isIn(["active", "inactive", "pending"]).withMessage("Status must be active, inactive, or pending"),
+];
+
+const profileUpdateValidation = [
+  body("full_name").optional().notEmpty().withMessage("Full Name cannot be empty"),
+  body("rank_id").optional().isInt().withMessage("Valid Rank ID is required"),
+  body("blood_group").optional().notEmpty().withMessage("Blood Group cannot be empty"),
+  body("last_donated_date").optional().isDate().withMessage("Valid last donated date is required"),
+  body("mobile_number").optional().notEmpty().withMessage("Mobile Number cannot be empty"),
+  body("email").optional().isEmail().withMessage("Valid email is required"),
+  body("date_of_birth").optional().isDate().withMessage("Valid date of birth is required"),
+  body("service_start_date").optional().isDate().withMessage("Valid service start date is required"),
+  body("residential_address").optional().notEmpty().withMessage("Residential Address cannot be empty"),
+  body("office_id").optional().isInt().withMessage("Valid Office ID is required"),
 ];
 
 exports.createUser = [
@@ -71,8 +87,9 @@ exports.createUser = [
 
       const {
         full_name,
-        rank,
+        rank_id,
         blood_group,
+        last_donated_date,
         mobile_number,
         email,
         password,
@@ -84,8 +101,9 @@ exports.createUser = [
 
       console.log("Destructured fields:", {
         full_name,
-        rank,
+        rank_id,
         blood_group,
+        last_donated_date,
         mobile_number,
         email,
         password,
@@ -97,7 +115,7 @@ exports.createUser = [
 
       if (
         !full_name ||
-        !rank ||
+        !rank_id ||
         !blood_group ||
         !mobile_number ||
         !email ||
@@ -115,14 +133,20 @@ exports.createUser = [
         return res.status(400).json({ error: "Office ID does not exist" });
       }
 
+      const rank = await Rank.findByPk(rank_id);
+      if (!rank) {
+        return res.status(400).json({ error: "Rank ID does not exist" });
+      }
+
       const login_id = await generateLoginId();
       const hashedPassword = await bcrypt.hash(password, 10);
 
       const user = await User.create({
         login_id,
         full_name,
-        rank,
+        rank_id,
         blood_group,
+        last_donated_date,
         mobile_number,
         email,
         password: hashedPassword,
@@ -147,7 +171,7 @@ exports.createUser = [
         }
       }
       if (error instanceof ForeignKeyConstraintError) {
-        return res.status(400).json({ error: "Office ID does not exist" });
+        return res.status(400).json({ error: "Invalid Office ID or Rank ID" });
       }
       res.status(500).json({ error: "Failed to create user", details: error.message });
     }
@@ -157,23 +181,39 @@ exports.createUser = [
 exports.getUsers = [
   query("blood_group").optional().isString(),
   query("office_id").optional().isInt(),
-  query("rank").optional().isString(),
+  query("rank_id").optional().isInt(),
   validate,
   async (req, res) => {
     try {
-      const { blood_group, office_id, rank } = req.query;
+      const { blood_group, office_id, rank_id } = req.query;
       const where = {};
       if (blood_group) where.blood_group = blood_group;
       if (office_id) where.office_id = office_id;
-      if (rank) where.rank = rank;
+      if (rank_id) where.rank_id = rank_id;
 
       const users = await User.findAll({
         where,
-        include: [Office],
-        order: [["rank", "ASC"]],
-        attributes: { exclude: ["password"] }, // Exclude password
+        include: [
+          { model: Office, as: "office", attributes: ["name"] },
+          { model: Rank, as: "rank", attributes: ["name"] },
+        ],
+        order: [["full_name", "ASC"]],
+        attributes: { exclude: ["password"] },
       });
-      res.json(users);
+
+      // Map users to flatten office.name and rank.name
+      const formattedUsers = users.map((user) => {
+        const userData = user.get({ plain: true });
+        return {
+          ...userData,
+          office_name: userData.office ? userData.office.name : null,
+          rank_name: userData.rank ? userData.rank.name : null,
+          office: undefined,
+          rank: undefined,
+        };
+      });
+
+      res.json(formattedUsers);
     } catch (error) {
       console.error("Error fetching users:", error);
       res.status(500).json({ error: "Failed to fetch users", details: error.message });
@@ -184,8 +224,11 @@ exports.getUsers = [
 exports.getUser = async (req, res) => {
   try {
     const user = await User.findByPk(req.params.id, {
-      include: [Office],
-      attributes: { exclude: ["password"] }, // Exclude password
+      include: [
+        { model: Office, as: "office" },
+        { model: Rank, as: "rank" },
+      ],
+      attributes: { exclude: ["password"] },
     });
     if (!user) {
       return res.status(404).json({ error: "User not found" });
@@ -199,11 +242,12 @@ exports.getUser = async (req, res) => {
 
 exports.updateUser = [
   upload.single("profile_photo"),
-  profileUpdateValidation,
+  updateUserValidation,
   validate,
   async (req, res) => {
     try {
-      console.log("req.file ======>", req.file);
+      console.log("Update request body:", req.body);
+      console.log("Update request file:", req.file);
 
       const user = await User.findByPk(req.params.id);
       if (!user) {
@@ -212,8 +256,9 @@ exports.updateUser = [
 
       const {
         full_name,
-        rank,
+        rank_id,
         blood_group,
+        last_donated_date,
         mobile_number,
         email,
         date_of_birth,
@@ -222,43 +267,60 @@ exports.updateUser = [
         office_id,
       } = req.body;
 
+      // Prepare updates object with only provided fields
+      const updates = {};
+      if (full_name) updates.full_name = full_name;
+      if (rank_id) updates.rank_id = rank_id;
+      if (blood_group) updates.blood_group = blood_group;
+      if (last_donated_date) updates.last_donated_date = last_donated_date;
+      if (mobile_number) updates.mobile_number = mobile_number;
+      if (email) updates.email = email;
+      if (date_of_birth) updates.date_of_birth = date_of_birth;
+      if (service_start_date) updates.service_start_date = service_start_date;
+      if (residential_address) updates.residential_address = residential_address;
+      if (office_id) updates.office_id = office_id;
+      if (req.file) updates.profile_photo = req.file.path;
+
+      // Validate office_id and rank_id if provided
       if (office_id) {
         const office = await Office.findByPk(office_id);
         if (!office) {
           return res.status(400).json({ error: "Office ID does not exist" });
         }
       }
+      if (rank_id) {
+        const rank = await Rank.findByPk(rank_id);
+        if (!rank) {
+          return res.status(400).json({ error: "Rank ID does not exist" });
+        }
+      }
 
-      console.log("udated user data ======>");
+      // Apply updates only if there are changes
+      if (Object.keys(updates).length === 0) {
+        return res.status(400).json({ error: "No fields provided for update" });
+      }
 
-      await user.update({
-        full_name,
-        rank,
-        blood_group,
-        mobile_number,
-        email,
-        date_of_birth,
-        service_start_date,
-        residential_address,
-        profile_photo: req.file ? req.file.path : user.profile_photo,
-        office_id,
+      await user.update(updates);
+
+      // Fetch updated user with Office and Rank included
+      const updatedUser = await User.findByPk(req.params.id, {
+        include: [
+          { model: Office, as: "office" },
+          { model: Rank, as: "rank" },
+        ],
+        attributes: { exclude: ["password"] },
       });
 
-      // Exclude password from response
-      const { password: _, ...userWithoutPassword } = user.get({ plain: true });
-      res.json(userWithoutPassword);
+      res.json(updatedUser);
     } catch (error) {
       console.error("Error updating user:", error);
       if (error instanceof UniqueConstraintError) {
         if (error.fields.email) {
           return res.status(400).json({ error: "Email already exists" });
         }
-        if (error.fields.login_id) {
-          return res.status(400).json({ error: "Login ID already exists" });
-        }
       }
       if (error instanceof ForeignKeyConstraintError) {
-        return res.status(400).json({ error: "Office ID does not exist" });
+        return res.status(400).json({ error: "Invalid Office ID or Rank ID" });
       }
       res.status(500).json({ error: "Failed to update user", details: error.message });
     }
@@ -284,8 +346,11 @@ exports.getOwnProfile = async (req, res) => {
 
   try {
     const user = await User.findByPk(req.user.id, {
-      include: [Office],
-      attributes: { exclude: ["password"] }, // Exclude password
+      include: [
+        { model: Office, as: "office" },
+        { model: Rank, as: "rank" },
+      ],
+      attributes: { exclude: ["password"] },
     });
     if (!user) {
       return res.status(404).json({ error: "User not found" });
@@ -313,36 +378,42 @@ exports.updateOwnProfile = [
 
       const {
         full_name,
-        rank,
+        rank_id,
         blood_group,
+        last_donated_date,
         mobile_number,
         email,
         date_of_birth,
         service_start_date,
         residential_address,
         office_id,
-        status,
       } = req.body;
 
-      // Prepare updates object with only provided fields, excluding password
+      // Prepare updates object with only provided fields
       const updates = {};
       if (full_name) updates.full_name = full_name;
-      if (rank) updates.rank = rank;
+      if (rank_id) updates.rank_id = rank_id;
       if (blood_group) updates.blood_group = blood_group;
+      if (last_donated_date) updates.last_donated_date = last_donated_date;
       if (mobile_number) updates.mobile_number = mobile_number;
       if (email) updates.email = email;
       if (date_of_birth) updates.date_of_birth = date_of_birth;
       if (service_start_date) updates.service_start_date = service_start_date;
       if (residential_address) updates.residential_address = residential_address;
       if (office_id) updates.office_id = office_id;
-      if (status) updates.status = status;
       if (req.file) updates.profile_photo = req.file.path;
 
-      // Validate office_id if provided
+      // Validate office_id and rank_id if provided
       if (office_id) {
         const office = await Office.findByPk(office_id);
         if (!office) {
           return res.status(400).json({ error: "Office ID does not exist" });
+        }
+      }
+      if (rank_id) {
+        const rank = await Rank.findByPk(rank_id);
+        if (!rank) {
+          return res.status(400).json({ error: "Rank ID does not exist" });
         }
       }
 
@@ -353,9 +424,12 @@ exports.updateOwnProfile = [
 
       await user.update(updates);
 
-      // Fetch updated user with Office included
+      // Fetch updated user with Office and Rank included
       const updatedUser = await User.findByPk(req.user.id, {
-        include: [Office],
+        include: [
+          { model: Office, as: "office" },
+          { model: Rank, as: "rank" },
+        ],
         attributes: { exclude: ["password"] },
       });
 
@@ -368,7 +442,7 @@ exports.updateOwnProfile = [
         }
       }
       if (error instanceof ForeignKeyConstraintError) {
-        return res.status(400).json({ error: "Office ID does not exist" });
+        return res.status(400).json({ error: "Invalid Office ID or Rank ID" });
       }
       res.status(500).json({ error: "Failed to update profile", details: error.message });
     }

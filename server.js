@@ -5,6 +5,7 @@ const sequelize = require("./config/database");
 const authRoutes = require("./routes/auth_routes");
 const userRoutes = require("./routes/user_routes");
 const officeRoutes = require("./routes/office_routes");
+const rankRoutes = require("./routes/rank_routes");
 const Admin = require("./models/admin");
 const bcrypt = require("bcrypt");
 const path = require("path");
@@ -38,6 +39,7 @@ app.use((req, res, next) => {
 app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/offices", officeRoutes);
+app.use("/api/ranks", rankRoutes);
 
 // Initialize admin user
 const initializeAdmin = async () => {
@@ -59,7 +61,7 @@ const initializeAdmin = async () => {
 
 // Database synchronization and server start
 sequelize
-  .sync()
+  .sync({ force: true })
   .then(async () => {
     await initializeAdmin();
     const port = process.env.PORT || 7700;

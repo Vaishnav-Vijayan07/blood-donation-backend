@@ -31,4 +31,8 @@ const Office = sequelize.define(
   }
 );
 
+Office.associate = (models) => {
+  Office.hasMany(models.User, { foreignKey: "office_id", as: "users" });
+};
+
 module.exports = Office;
