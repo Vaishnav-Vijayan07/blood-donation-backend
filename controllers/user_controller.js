@@ -46,9 +46,16 @@ const userValidation = [
 ];
 
 const profileUpdateValidation = [
-  body("mobile_number").optional().notEmpty().withMessage("Mobile Number is required"),
-  body("residential_address").optional().notEmpty().withMessage("Residential Address is required"),
-  body("password").optional().isLength({ min: 6 }).withMessage("Password must be at least 6 characters"),
+  body("full_name").optional().notEmpty().withMessage("Full Name cannot be empty"),
+  body("rank").optional().notEmpty().withMessage("Rank cannot be empty"),
+  body("blood_group").optional().notEmpty().withMessage("Blood Group cannot be empty"),
+  body("mobile_number").optional().notEmpty().withMessage("Mobile Number cannot be empty"),
+  body("email").optional().isEmail().withMessage("Valid email is required"),
+  body("date_of_birth").optional().isDate().withMessage("Valid date of birth is required"),
+  body("service_start_date").optional().isDate().withMessage("Valid service start date is required"),
+  body("residential_address").optional().notEmpty().withMessage("Residential Address cannot be empty"),
+  body("office_id").optional().isInt().withMessage("Valid Office ID is required"),
+  body("status").optional().isIn(["active", "inactive", "pending"]).withMessage("Status must be active, inactive, or pending"),
 ];
 
 exports.createUser = [
@@ -192,7 +199,7 @@ exports.getUser = async (req, res) => {
 
 exports.updateUser = [
   upload.single("profile_photo"),
-  userValidation,
+  profileUpdateValidation,
   validate,
   async (req, res) => {
     try {
@@ -209,7 +216,6 @@ exports.updateUser = [
         blood_group,
         mobile_number,
         email,
-        password,
         date_of_birth,
         service_start_date,
         residential_address,
@@ -223,8 +229,6 @@ exports.updateUser = [
         }
       }
 
-      const hashedPassword = password ? await bcrypt.hash(password, 10) : user.password;
-
       console.log("udated user data ======>");
 
       await user.update({
@@ -233,7 +237,6 @@ exports.updateUser = [
         blood_group,
         mobile_number,
         email,
-        password: hashedPassword,
         date_of_birth,
         service_start_date,
         residential_address,
@@ -299,7 +302,8 @@ exports.updateOwnProfile = [
   profileUpdateValidation,
   validate,
   async (req, res) => {
-    console.log("req.file ======>", req.file);
+    console.log("Update own profile request body:", req.body);
+    console.log("Update own profile request file:", req.file);
 
     try {
       const user = await User.findByPk(req.user.id);
@@ -307,21 +311,65 @@ exports.updateOwnProfile = [
         return res.status(404).json({ error: "User not found" });
       }
 
-      const { mobile_number, residential_address, password } = req.body;
+      const {
+        full_name,
+        rank,
+        blood_group,
+        mobile_number,
+        email,
+        date_of_birth,
+        service_start_date,
+        residential_address,
+        office_id,
+        status,
+      } = req.body;
 
+      // Prepare updates object with only provided fields, excluding password
       const updates = {};
+      if (full_name) updates.full_name = full_name;
+      if (rank) updates.rank = rank;
+      if (blood_group) updates.blood_group = blood_group;
       if (mobile_number) updates.mobile_number = mobile_number;
+      if (email) updates.email = email;
+      if (date_of_birth) updates.date_of_birth = date_of_birth;
+      if (service_start_date) updates.service_start_date = service_start_date;
       if (residential_address) updates.residential_address = residential_address;
-      if (password) updates.password = await bcrypt.hash(password, 10);
+      if (office_id) updates.office_id = office_id;
+      if (status) updates.status = status;
       if (req.file) updates.profile_photo = req.file.path;
+
+      // Validate office_id if provided
+      if (office_id) {
+        const office = await Office.findByPk(office_id);
+        if (!office) {
+          return res.status(400).json({ error: "Office ID does not exist" });
+        }
+      }
+
+      // Apply updates only if there are changes
+      if (Object.keys(updates).length === 0) {
+        return res.status(400).json({ error: "No fields provided for update" });
+      }
 
       await user.update(updates);
 
-      // Exclude password from response
-      const { password: _, ...userWithoutPassword } = user.get({ plain: true });
-      res.json(userWithoutPassword);
+      // Fetch updated user with Office included
+      const updatedUser = await User.findByPk(req.user.id, {
+        include: [Office],
+        attributes: { exclude: ["password"] },
+      });
+
+      res.json(updatedUser);
     } catch (error) {
       console.error("Error updating own profile:", error);
+      if (error instanceof UniqueConstraintError) {
+        if (error.fields.email) {
+          return res.status(400).json({ error: "Email already exists" });
+        }
+      }
+      if (error instanceof ForeignKeyConstraintError) {
+        return res.status(400).json({ error: "Office ID does not exist" });
+      }
       res.status(500).json({ error: "Failed to update profile", details: error.message });
     }
   },
