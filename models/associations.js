@@ -1,7 +1,7 @@
 console.log("Initializing associations.js");
 
 // Load models
-let User, Office, Rank;
+let User, Office, Rank, DiaryPdf;
 try {
   User = require("./user");
   console.log("User model loaded:", User ? "Defined" : "Undefined");
@@ -23,8 +23,15 @@ try {
   console.error("Error loading Rank model:", error);
 }
 
+try {
+  DiaryPdf = require("./diary_pdf");
+  console.log("DiaryPdf model loaded:", DiaryPdf ? "Defined" : "Undefined");
+} catch (error) {
+  console.error("Error loading DiaryPdf model:", error);
+}
+
 // Initialize models object
-const models = { User, Office, Rank };
+const models = { User, Office, Rank, DiaryPdf };
 
 // Set associations after all models are loaded
 const setAssociations = () => {
@@ -46,5 +53,6 @@ setAssociations();
 console.log("User associations:", Object.keys(models.User?.associations || {}));
 console.log("Office associations:", Object.keys(models.Office?.associations || {}));
 console.log("Rank associations:", Object.keys(models.Rank?.associations || {}));
+console.log("DiaryPdf associations:", Object.keys(models.DiaryPdf?.associations || {}));
 
 module.exports = models;

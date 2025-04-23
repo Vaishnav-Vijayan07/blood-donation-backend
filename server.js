@@ -6,6 +6,7 @@ const authRoutes = require("./routes/auth_routes");
 const userRoutes = require("./routes/user_routes");
 const officeRoutes = require("./routes/office_routes");
 const rankRoutes = require("./routes/rank_routes");
+const diaryPdfRoutes = require("./routes/diary_pdf_routes");
 const Admin = require("./models/admin");
 const bcrypt = require("bcrypt");
 const path = require("path");
@@ -40,6 +41,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/offices", officeRoutes);
 app.use("/api/ranks", rankRoutes);
+app.use('/api/diary-pdfs', diaryPdfRoutes);
 
 // Initialize admin user
 const initializeAdmin = async () => {
