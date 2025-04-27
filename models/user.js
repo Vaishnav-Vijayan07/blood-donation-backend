@@ -71,6 +71,12 @@ const User = sequelize.define(
       allowNull: false,
       field: "office_id",
     },
+    is_active: {
+      type: DataTypes.TEXT,
+      allowNull: false,
+      field: "is_active",
+      defaultValue: true,
+    },
   },
   {
     tableName: "users",
