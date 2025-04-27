@@ -280,7 +280,7 @@ exports.updateUser = [
       if (service_start_date) updates.service_start_date = service_start_date;
       if (residential_address) updates.residential_address = residential_address;
       if (office_id) updates.office_id = office_id;
-      if(is_active) updates.is_active = is_active;
+      if (is_active !== undefined) updates.is_active = is_active;
       if (req.file) updates.profile_photo = req.file.path;
 
       // Validate office_id and rank_id if provided
