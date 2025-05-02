@@ -6,6 +6,7 @@ const { requireAdmin, requireAuth } = require('../middlewares/auth_middleware');
 console.log('auth_middleware:', { requireAdmin, requireAuth });
 router.get('/me', requireAuth, userController.getOwnProfile);
 router.put('/me', requireAuth, userController.updateOwnProfile);
+router.post('/change-password', requireAuth, userController.changePassword);
 
 router.post('/', requireAdmin, userController.createUser);
 router.get('/', requireAuth, userController.getUsers);

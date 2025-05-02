@@ -48,6 +48,15 @@ const userValidation = [
   body("office_id").isInt().withMessage("Valid Office ID is required"),
 ];
 
+const changePasswordValidation = [
+  body("current_password")
+    .notEmpty()
+    .withMessage("Current password is required"),
+  body("new_password")
+    .isLength({ min: 6 })
+    .withMessage("New password must be at least 6 characters"),
+];
+
 const updateUserValidation = [
   body("full_name").optional().notEmpty().withMessage("Full Name cannot be empty"),
   body("rank_id").optional().isInt().withMessage("Valid Rank ID is required"),
@@ -447,6 +456,36 @@ exports.updateOwnProfile = [
         return res.status(400).json({ error: "Invalid Office ID or Rank ID" });
       }
       res.status(500).json({ error: "Failed to update profile", details: error.message });
+    }
+  },
+];
+
+exports.changePassword = [
+  changePasswordValidation,
+  validate,
+  async (req, res) => {
+    try {
+      const user = await User.findByPk(req.user.id);
+      if (!user) {
+        return res.status(404).json({ error: { message: "User not found" } });
+      }
+
+      const { current_password, new_password } = req.body;
+
+      // Verify current password
+      const isMatch = await bcrypt.compare(current_password, user.password);
+      if (!isMatch) {
+        return res.status(400).json({ error: { message: "Current password is incorrect" } });
+      }
+
+      // Hash new password and update
+      const hashedPassword = await bcrypt.hash(new_password, 10);
+      await user.update({ password: hashedPassword });
+
+      res.json({ message: "Password changed successfully" });
+    } catch (error) {
+      console.error("Error changing password:", error);
+      res.status(500).json({ error: { message: "Failed to change password", details: error.message } });
     }
   },
 ];
