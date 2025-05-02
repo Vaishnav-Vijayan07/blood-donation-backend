@@ -8,7 +8,17 @@ const Rank = models.Rank;
 const generateLoginId = require("../utils/generate_login_id");
 const multer = require("multer");
 const path = require("path");
-const { UniqueConstraintError, ForeignKeyConstraintError } = require("sequelize");
+const { UniqueConstraintError, ForeignKeyConstraintError, Op } = require("sequelize");
+const nodemailer = require("nodemailer");
+const crypto = require("crypto");
+
+const transporter = nodemailer.createTransport({
+  service: "gmail",
+  auth: {
+    user: process.env.EMAIL_USER || "your-email@gmail.com",
+    pass: process.env.EMAIL_PASS || "your-email-app-password",
+  },
+});
 
 // Configure Multer storage to preserve file extension
 const storage = multer.diskStorage({
@@ -49,12 +59,19 @@ const userValidation = [
 ];
 
 const changePasswordValidation = [
-  body("current_password")
-    .notEmpty()
-    .withMessage("Current password is required"),
-  body("new_password")
-    .isLength({ min: 6 })
-    .withMessage("New password must be at least 6 characters"),
+  body("current_password").notEmpty().withMessage("Current password is required"),
+  body("new_password").isLength({ min: 6 }).withMessage("New password must be at least 6 characters"),
+];
+
+const adminRequestPasswordChangeValidation = [
+  body("user_id").optional().isInt().withMessage("Valid User ID is required"),
+  body("email").optional().isEmail().withMessage("Valid email is required"),
+  body().custom((value, { req }) => {
+    if (!req.body.user_id && !req.body.email) {
+      throw new Error("Either user_id or email is required");
+    }
+    return true;
+  }),
 ];
 
 const updateUserValidation = [
@@ -274,7 +291,7 @@ exports.updateUser = [
         service_start_date,
         residential_address,
         office_id,
-        is_active
+        is_active,
       } = req.body;
 
       // Prepare updates object with only provided fields
@@ -486,6 +503,56 @@ exports.changePassword = [
     } catch (error) {
       console.error("Error changing password:", error);
       res.status(500).json({ error: { message: "Failed to change password", details: error.message } });
+    }
+  },
+];
+
+exports.adminRequestPasswordChange = [
+  adminRequestPasswordChangeValidation,
+  validate,
+  async (req, res) => {
+    try {
+      const { user_id, email } = req.body;
+
+      // Find user by user_id or email
+      const user = await User.findOne({
+        where: {
+          [Op.or]: [user_id ? { id: user_id } : null, email ? { email } : null].filter(Boolean),
+        },
+      });
+
+      if (!user) {
+        return res.status(404).json({ error: { message: "User not found" } });
+      }
+
+      if (!email) {
+        return res.status(400).json({ error: { message: "Email is required" } });
+      }
+
+      // Generate reset token
+      const token = crypto.randomBytes(32).toString("hex");
+      const expires = new Date(Date.now() + 3600000); // 1 hour expiration
+
+      // Store token and expiration
+      await user.update({
+        reset_password_token: token,
+        reset_password_expires: expires,
+      });
+
+      // Send reset email
+      const resetUrl = `${process.env.FRONTEND_URL || "http://localhost:3000"}/reset-password?token=${token}`;
+      const mailOptions = {
+        to: user.email,
+        from: process.env.EMAIL_USER || "your-email@gmail.com",
+        subject: "Password Change Request",
+        text: `An admin has requested a password change for your account. Click the link to set a new password: ${resetUrl}\n\nThis link will expire in 1 hour.`,
+      };
+
+      await transporter.sendMail(mailOptions);
+      res.json({ message: "Password change email sent to user" });
+    } catch (error) {
+      console.error("Error requesting password change:", error);
+      res.status(500).json({ error: { message: "Failed to send password change email", details: error.message } });
     }
   },
 ];
