@@ -41,7 +41,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/offices", officeRoutes);
 app.use("/api/ranks", rankRoutes);
-app.use('/api/diary-pdfs', diaryPdfRoutes);
+app.use("/api/diary-pdfs", diaryPdfRoutes);
 
 // Initialize admin user
 const initializeAdmin = async () => {
@@ -63,7 +63,7 @@ const initializeAdmin = async () => {
 
 // Database synchronization and server start
 sequelize
-  .sync()
+  .sync({ force: true })
   .then(async () => {
     await initializeAdmin();
     const port = process.env.PORT || 7700;

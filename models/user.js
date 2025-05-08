@@ -17,12 +17,12 @@ const User = sequelize.define(
     },
     rank_id: {
       type: DataTypes.INTEGER,
-      allowNull: false,
+      allowNull: true,
       field: "rank_id",
     },
     blood_group: {
       type: DataTypes.STRING,
-      allowNull: false,
+      allowNull: true,
       field: "blood_group",
     },
     last_donated_date: {
@@ -32,13 +32,13 @@ const User = sequelize.define(
     },
     mobile_number: {
       type: DataTypes.STRING,
-      allowNull: false,
+      allowNull: true,
       field: "mobile_number",
     },
     email: {
       type: DataTypes.STRING,
       unique: true,
-      allowNull: false,
+      allowNull: true,
       field: "email",
     },
     password: {
@@ -48,17 +48,17 @@ const User = sequelize.define(
     },
     date_of_birth: {
       type: DataTypes.DATE,
-      allowNull: false,
+      allowNull: true,
       field: "date_of_birth",
     },
     service_start_date: {
       type: DataTypes.DATE,
-      allowNull: false,
+      allowNull: true,
       field: "service_start_date",
     },
     residential_address: {
       type: DataTypes.TEXT,
-      allowNull: false,
+      allowNull: true,
       field: "residential_address",
     },
     profile_photo: {
@@ -68,7 +68,7 @@ const User = sequelize.define(
     },
     office_id: {
       type: DataTypes.INTEGER,
-      allowNull: false,
+      allowNull: true,
       field: "office_id",
     },
     is_active: {

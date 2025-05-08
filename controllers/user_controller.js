@@ -223,7 +223,7 @@ exports.getUsers = [
           { model: Office, as: "office", attributes: ["name"] },
           { model: Rank, as: "rank", attributes: ["name"] },
         ],
-        order: [["full_name", "ASC"]],
+        order: [["login_id", "ASC"]],
         attributes: { exclude: ["password"] },
       });
 
