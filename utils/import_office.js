@@ -308,10 +308,10 @@ const officeData = [
   },
 ];
 
-async function importOffices() {
+async function importOffices(req, res) {
   try {
     // Sync database (optional, for testing; avoid in production)
-    await sequelize.sync({ force: false });
+    // await sequelize.sync({ force: false });
 
     // Import each office
     for (const office of officeData) {
@@ -328,6 +328,7 @@ async function importOffices() {
     }
 
     console.log("Office import completed.");
+    res.send({ message: "Office import completed" });
   } catch (error) {
     console.error("Error during import:", error);
   } finally {
@@ -337,4 +338,5 @@ async function importOffices() {
 }
 
 // Run the import
-importOffices();
+// importOffices();
+module.exports = importOffices;

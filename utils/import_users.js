@@ -374,7 +374,7 @@ const userData = [
 // Default values for required fields
 const DEFAULT_PASSWORD = "password123";
 
-async function importUsers() {
+async function importUsers(req, res) {
   let successCount = 0;
   let errorCount = 0;
 
@@ -489,6 +489,7 @@ async function importUsers() {
     }
 
     console.log(`User import completed. Successfully imported: ${successCount}, Errors: ${errorCount}`);
+    res.send({ message: "User import completed" });
   } catch (error) {
     console.error("Error during import setup:", error);
   } finally {
@@ -498,4 +499,6 @@ async function importUsers() {
 }
 
 // Run the import
-importUsers();
+// importUsers();
+
+module.exports = importUsers;
