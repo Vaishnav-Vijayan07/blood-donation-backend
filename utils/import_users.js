@@ -436,7 +436,7 @@ async function importUsers(req, res) {
           blood_group: user.blood_group || "O+",
           last_donated_date: null,
           mobile_number: user.mobile_number,
-          email: user.blood_group,
+          email: null,
           password: hashedPassword,
           date_of_birth: null,
           service_start_date: null,
