@@ -428,29 +428,6 @@ async function importUsers(req, res) {
           continue;
         }
 
-        // Generate unique email
-        let email;
-        let emailAttempts = 0;
-        const maxEmailAttempts = 10;
-        while (!email && emailAttempts < maxEmailAttempts) {
-          const emailBase = user.full_name.toLowerCase().replace(/[^a-z0-9]+/g, ".");
-          email = `${emailBase}_${uuidv4().substring(0, 8)}@example.com`;
-          const existingEmail = await User.findOne({
-            where: { email },
-            transaction,
-          });
-          if (existingEmail) {
-            email = null;
-            emailAttempts++;
-          }
-        }
-        if (!email) {
-          console.error(`Failed to generate unique email for ${user.full_name} after ${maxEmailAttempts} attempts`);
-          errorCount++;
-          await transaction.rollback();
-          continue;
-        }
-
         // Prepare user data
         const userRecord = {
           login_id,
@@ -459,7 +436,7 @@ async function importUsers(req, res) {
           blood_group: user.blood_group || "O+",
           last_donated_date: null,
           mobile_number: user.mobile_number,
-          email,
+          email: user.blood_group,
           password: hashedPassword,
           date_of_birth: null,
           service_start_date: null,
