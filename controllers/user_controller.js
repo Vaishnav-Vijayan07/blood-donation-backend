@@ -87,18 +87,18 @@ const updateUserValidation = [
   body("office_id").optional().isInt().withMessage("Valid Office ID is required"),
 ];
 
-const profileUpdateValidation = [
-  body("full_name").optional().notEmpty().withMessage("Full Name cannot be empty"),
-  body("rank_id").optional().isInt().withMessage("Valid Rank ID is required"),
-  body("blood_group").optional().notEmpty().withMessage("Blood Group cannot be empty"),
-  body("last_donated_date").optional().isDate().withMessage("Valid last donated date is required"),
-  body("mobile_number").optional().notEmpty().withMessage("Mobile Number cannot be empty"),
-  body("email").optional().isEmail().withMessage("Valid email is required"),
-  body("date_of_birth").optional().isDate().withMessage("Valid date of birth is required"),
-  body("service_start_date").optional().isDate().withMessage("Valid service start date is required"),
-  body("residential_address").optional().notEmpty().withMessage("Residential Address cannot be empty"),
-  body("office_id").optional().isInt().withMessage("Valid Office ID is required"),
-];
+// const profileUpdateValidation = [
+//   body("full_name").optional().notEmpty().withMessage("Full Name cannot be empty"),
+//   body("rank_id").optional().isInt().withMessage("Valid Rank ID is required"),
+//   body("blood_group").optional().notEmpty().withMessage("Blood Group cannot be empty"),
+//   body("last_donated_date").optional().isDate().withMessage("Valid last donated date is required"),
+//   body("mobile_number").optional().notEmpty().withMessage("Mobile Number cannot be empty"),
+//   body("email").optional().isEmail().withMessage("Valid email is required"),
+//   body("date_of_birth").optional().isDate().withMessage("Valid date of birth is required"),
+//   body("service_start_date").optional().isDate().withMessage("Valid service start date is required"),
+//   body("residential_address").optional().notEmpty().withMessage("Residential Address cannot be empty"),
+//   body("office_id").optional().isInt().withMessage("Valid Office ID is required"),
+// ];
 
 exports.createUser = [
   upload.single("profile_photo"),
@@ -392,7 +392,7 @@ exports.getOwnProfile = async (req, res) => {
 
 exports.updateOwnProfile = [
   upload.single("profile_photo"),
-  profileUpdateValidation,
+  // profileUpdateValidation,
   validate,
   async (req, res) => {
     console.log("Update own profile request body:", req.body);
