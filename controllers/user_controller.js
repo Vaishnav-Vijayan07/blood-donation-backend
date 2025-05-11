@@ -390,6 +390,93 @@ exports.getOwnProfile = async (req, res) => {
   }
 };
 
+// exports.updateOwnProfile = [
+//   upload.single("profile_photo"),
+//   // profileUpdateValidation,
+//   validate,
+//   async (req, res) => {
+//     console.log("Update own profile request body:", req.body);
+//     console.log("Update own profile request file:", req.file);
+
+//     try {
+//       const user = await User.findByPk(req.user.id);
+//       if (!user) {
+//         return res.status(404).json({ error: "User not found" });
+//       }
+
+//       const {
+//         full_name,
+//         rank_id,
+//         blood_group,
+//         last_donated_date,
+//         mobile_number,
+//         email,
+//         date_of_birth,
+//         service_start_date,
+//         residential_address,
+//         office_id,
+//       } = req.body;
+
+//       // Prepare updates object with only provided fields
+//       const updates = {};
+//       if (full_name) updates.full_name = full_name;
+//       if (rank_id) updates.rank_id = rank_id;
+//       if (blood_group) updates.blood_group = blood_group;
+//       if (last_donated_date) updates.last_donated_date = last_donated_date;
+//       if (mobile_number) updates.mobile_number = mobile_number;
+//       if (email) updates.email = email;
+//       if (date_of_birth) updates.date_of_birth = date_of_birth;
+//       if (service_start_date) updates.service_start_date = service_start_date;
+//       if (residential_address) updates.residential_address = residential_address;
+//       if (office_id) updates.office_id = office_id;
+//       if (req.file) updates.profile_photo = req.file.path;
+
+//       // Validate office_id and rank_id if provided
+//       if (office_id) {
+//         const office = await Office.findByPk(office_id);
+//         if (!office) {
+//           return res.status(400).json({ error: "Office ID does not exist" });
+//         }
+//       }
+//       if (rank_id) {
+//         const rank = await Rank.findByPk(rank_id);
+//         if (!rank) {
+//           return res.status(400).json({ error: "Rank ID does not exist" });
+//         }
+//       }
+
+//       // Apply updates only if there are changes
+//       if (Object.keys(updates).length === 0) {
+//         return res.status(400).json({ error: "No fields provided for update" });
+//       }
+
+//       await user.update(updates);
+
+//       // Fetch updated user with Office and Rank included
+//       const updatedUser = await User.findByPk(req.user.id, {
+//         include: [
+//           { model: Office, as: "office" },
+//           { model: Rank, as: "rank" },
+//         ],
+//         attributes: { exclude: ["password"] },
+//       });
+
+//       res.json(updatedUser);
+//     } catch (error) {
+//       console.error("Error updating own profile:", error);
+//       if (error instanceof UniqueConstraintError) {
+//         if (error.fields.email) {
+//           return res.status(400).json({ error: "Email already exists" });
+//         }
+//       }
+//       if (error instanceof ForeignKeyConstraintError) {
+//         return res.status(400).json({ error: "Invalid Office ID or Rank ID" });
+//       }
+//       res.status(500).json({ error: "Failed to update profile", details: error.message });
+//     }
+//   },
+// ];
+
 exports.updateOwnProfile = [
   upload.single("profile_photo"),
   // profileUpdateValidation,
@@ -428,16 +515,32 @@ exports.updateOwnProfile = [
       if (date_of_birth) updates.date_of_birth = date_of_birth;
       if (service_start_date) updates.service_start_date = service_start_date;
       if (residential_address) updates.residential_address = residential_address;
-      if (office_id) updates.office_id = office_id;
-      if (req.file) updates.profile_photo = req.file.path;
 
-      // Validate office_id and rank_id if provided
+      // Sanitize office_id
       if (office_id) {
-        const office = await Office.findByPk(office_id);
-        if (!office) {
-          return res.status(400).json({ error: "Office ID does not exist" });
+        // Convert "null" string to null, or parse to integer
+        const sanitizedOfficeId = office_id === "null" ? null : parseInt(office_id, 10);
+
+        // Check if office_id is a valid integer
+        if (sanitizedOfficeId !== null && isNaN(sanitizedOfficeId)) {
+          return res.status(400).json({ error: "Invalid Office ID format" });
+        }
+
+        // Only validate if office_id is not null
+        if (sanitizedOfficeId !== null) {
+          const office = await Office.findByPk(sanitizedOfficeId);
+          if (!office) {
+            return res.status(400).json({ error: "Office ID does not exist" });
+          }
+          updates.office_id = sanitizedOfficeId;
+        } else {
+          updates.office_id = null; // Allow setting office_id to null if that's valid in your schema
         }
       }
+
+      if (req.file) updates.profile_photo = req.file.path;
+
+      // Validate rank_id if provided
       if (rank_id) {
         const rank = await Rank.findByPk(rank_id);
         if (!rank) {
@@ -476,7 +579,6 @@ exports.updateOwnProfile = [
     }
   },
 ];
-
 exports.changePassword = [
   changePasswordValidation,
   validate,
