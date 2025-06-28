@@ -11,6 +11,7 @@ const path = require("path");
 const { UniqueConstraintError, ForeignKeyConstraintError, Op } = require("sequelize");
 const nodemailer = require("nodemailer");
 const crypto = require("crypto");
+const { sendPasswordEmail } = require("../utils/mail_utility");
 
 const transporter = nodemailer.createTransport({
   service: "gmail",
@@ -655,6 +656,39 @@ exports.adminRequestPasswordChange = [
     } catch (error) {
       console.error("Error requesting password change:", error);
       res.status(500).json({ error: { message: "Failed to send password change email", details: error.message } });
+    }
+  },
+];
+
+exports.adminResetUserPassword = [
+  validate,
+  async (req, res) => {
+    try {
+      // Assuming middleware verifies admin authentication via JWT
+      const { userId } = req.body;
+
+      const user = await User.findByPk(userId);
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+
+      if (!user.email) {
+        return res.status(400).json({ error: "User does not have an email address" });
+      }
+
+      // Generate a random password
+      const newPassword = crypto.randomBytes(8).toString("hex"); // Generates a 16-character random password
+      const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+      // Update user's password
+      await user.update({ password: hashedPassword });
+
+      // Send the new password to the user's email
+      await sendPasswordEmail(user.email, newPassword);
+      res.json({ message: "Password reset successful, new password sent to user's email" });
+    } catch (error) {
+      console.error("Error resetting user password:", error);
+      res.status(500).json({ error: "Failed to reset password or send email" });
     }
   },
 ];
