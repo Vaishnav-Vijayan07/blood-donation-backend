@@ -24,8 +24,9 @@ const requireAdmin = (req, res, next) => {
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
     console.log("Decoded token:", decoded);
-    
+
     if (decoded.type !== "admin") {
       return res.status(403).json({ error: "Requires admin role" });
     }
